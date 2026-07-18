@@ -1,0 +1,52 @@
+{
+  "name": "caretaker24-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.5.0",
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios"
+  },
+  "dependencies": {
+    "expo": "~54.0.0",
+    "expo-dev-client": "~6.0.21",
+    "expo-status-bar": "~3.0.9",
+    "expo-notifications": "~0.32.17",
+    "expo-device": "~8.0.10",
+    "expo-sensors": "~15.0.8",
+    "expo-auth-session": "~7.0.8",
+    "expo-apple-authentication": "~8.0.8",
+    "expo-constants": "~18.0.13",
+    "expo-image-picker": "~17.0.11",
+    "expo-secure-store": "~15.0.8",
+    "expo-local-authentication": "~17.0.8",
+    "expo-speech": "~14.0.8",
+    "expo-file-system": "~19.0.16",
+    "expo-web-browser": "~15.0.8",
+    "expo-location": "~19.0.7",
+    "react": "19.1.0",
+    "react-native": "0.81.0",
+    "react-native-safe-area-context": "~5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-svg": "15.11.2",
+    "react-native-qrcode-svg": "^6.3.2",
+    "expo-clipboard": "~8.0.8",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.2.0",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "react-native-razorpay": "^2.3.0",
+    "lucide-react-native": "^0.469.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  }
+}
