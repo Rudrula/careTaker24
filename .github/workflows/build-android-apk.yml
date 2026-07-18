@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK (release, no Expo CLI)
 
 # Three ways to trigger this:
 # 1. Automatically on every push to main (comment out if you don't want that)
@@ -26,12 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.19.4'
-          # No npm cache here on purpose: it requires a committed
-          # mobile/package-lock.json to compute a cache key, and this repo
-          # may not have one yet (see mobile/README.md's Troubleshooting
-          # section — committing a real, tested lockfile is recommended
-          # regardless, for reasons beyond just this workflow's build speed).
-          # Once you've committed one, add back: cache: 'npm', cache-dependency-path: mobile/package-lock.json
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -45,15 +39,39 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      # This is the safety net referenced throughout this project's README —
-      # corrects every expo-* package to the exact version the installed
-      # Expo SDK expects, using Expo's own live compatibility data, rather
-      # than trusting whatever's pinned in package.json.
-      - name: Align Expo package versions
-        run: npx expo install --fix
+      # This workflow deliberately never calls "npx expo prebuild" or any
+      # other Expo CLI command — the native android/ project is generated
+      # ONCE, locally, by you, and committed to this repo like any other
+      # source file (see mobile/README.md, "Committing the native android/
+      # folder"). CI just builds whatever's already checked in, using plain
+      # Android tooling. If this step fails, it means that one-time local
+      # step hasn't been done yet — this check exists to give you a clear,
+      # actionable error instead of a confusing Gradle failure several
+      # steps later.
+      - name: Verify the native Android project is committed
+        run: |
+          if [ ! -f "android/app/build.gradle" ]; then
+            echo "::error::android/app/build.gradle not found. This workflow expects the native Android project to already be committed to the repo — it does not run 'expo prebuild' itself. See mobile/README.md, 'Committing the native android/ folder', for the one-time local step to generate and commit it."
+            exit 1
+          fi
 
-      - name: Generate the native Android project
-        run: npx expo prebuild --platform android --clean
+      # Decodes the release keystore from a GitHub Secret (base64-encoded)
+      # into a real file, entirely outside the git repo — see
+      # mobile/README.md for how to create CARETAKER24_KEYSTORE_BASE64 and
+      # the three password/alias secrets below. Never commit an actual
+      # .keystore file; this is the whole reason it's injected as a secret
+      # at build time instead. If the secret isn't set, this step is
+      # skipped and the release build falls back to whatever signing
+      # config is already in the committed android/app/build.gradle
+      # (typically the debug keystore, unless you've set up real signing —
+      # see below).
+      - name: Decode release keystore
+        if: ${{ secrets.CARETAKER24_KEYSTORE_BASE64 != '' }}
+        env:
+          CARETAKER24_KEYSTORE_BASE64: ${{ secrets.CARETAKER24_KEYSTORE_BASE64 }}
+        run: |
+          echo "$CARETAKER24_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "RELEASE_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -64,16 +82,21 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('mobile/android/**/*.gradle*') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Build the debug APK
+      - name: Build the release APK
         working-directory: mobile/android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+        env:
+          RELEASE_STORE_FILE: ${{ env.RELEASE_STORE_FILE }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.CARETAKER24_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.CARETAKER24_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.CARETAKER24_KEY_PASSWORD }}
 
       # Makes the finished APK downloadable from the workflow run's summary
       # page — no server, no email, just a zip download link that appears
       # once this step completes. Kept for 30 days by default.
-      - name: Upload the APK
+      - name: Upload the release APK
         uses: actions/upload-artifact@v4
         with:
-          name: caretaker24-debug-apk
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: caretaker24-release-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
